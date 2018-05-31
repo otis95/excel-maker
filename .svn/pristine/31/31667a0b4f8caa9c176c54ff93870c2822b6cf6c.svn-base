@@ -1,0 +1,25 @@
+package model
+
+import (
+	"time"
+)
+
+type Invoice struct {
+	InvoiceNo    string    //发票号
+	Date         time.Time //日期
+	To           string    //对方公司
+	ContractNo   string    //合同号
+	Address      string    //地址
+	PaymentTerms string    //支付方式
+	TermsOfTrade string    //进出口交换比率
+	Goods        []Good    //商品
+	Total        float32   //商品价格总计
+}
+type Good struct {
+	HsNo        string  //海关商品编码
+	ItemNo      string  //项目号
+	Description string  //商品描述
+	Quantity    float32 // 商品重量
+	UnitPrice   float32 //单价
+	Amount      float32 //总计
+}

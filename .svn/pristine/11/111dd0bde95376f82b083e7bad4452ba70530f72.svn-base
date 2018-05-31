@@ -1,0 +1,268 @@
+package main
+
+import (
+	"excelproject/model"
+	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/lxn/walk"
+	. "github.com/lxn/walk/declarative"
+	"github.com/tealeg/xlsx"
+)
+
+type MyMainWindow struct {
+	*walk.MainWindow
+}
+
+func main() {
+
+	mw := new(MyMainWindow)
+
+	var db *walk.DataBinder
+	invoice := new(model.Invoice)
+	var widgetlit []Widget
+	Hsnolist := make([]*walk.LineEdit, 18)
+	ItemNolist := make([]*walk.LineEdit, 18)
+	Deslist := make([]*walk.LineEdit, 18)
+	Quantitylist := make([]*walk.LineEdit, 18)
+	UnitPricelist := make([]*walk.LineEdit, 18)
+
+	widgetlit = append(widgetlit, Label{
+		Text: "商品海关编号(HsNo)",
+	},
+		Label{
+			Text: "项目号(ItemNo)",
+		},
+		Label{
+			Text: "商品描述(Description)",
+		},
+		Label{
+			Text: "商品重量(Quantity)",
+		},
+		Label{
+			Text: "单价(UnitPrice)",
+		})
+	editlist := make([]LineEdit, 90)
+	for i, edit := range editlist {
+		switch i % 5 {
+		case 0:
+			edit.AssignTo = &Hsnolist[i/5]
+		case 1:
+			edit.AssignTo = &ItemNolist[i/5]
+		case 2:
+			edit.AssignTo = &Deslist[i/5]
+		case 3:
+			edit.AssignTo = &Quantitylist[i/5]
+		case 4:
+			edit.AssignTo = &UnitPricelist[i/5]
+		}
+		widgetlit = append(widgetlit, edit)
+	}
+
+	MainWindow{
+		AssignTo: &mw.MainWindow,
+		Title:    "太仓巨仁光伏材料有限公司",
+		MinSize:  Size{1100, 600},
+		Layout:   VBox{},
+		Children: []Widget{
+			HSplitter{
+				HandleWidth: 5,
+				DataBinder: DataBinder{
+					AssignTo:       &db,
+					DataSource:     invoice,
+					ErrorPresenter: ToolTipErrorPresenter{},
+				},
+				Children: []Widget{
+					Composite{
+						Layout: Grid{Columns: 1},
+						Children: []Widget{
+							Label{
+								Text: "发票号(INVOICE NO):",
+							},
+							LineEdit{
+								Text: Bind("InvoiceNo"),
+							},
+
+							Label{
+								Text: "日期(Date):",
+							},
+							DateEdit{
+								Date: Bind("Date"),
+							},
+
+							Label{
+								Text: "公司名(TO):",
+							},
+							LineEdit{
+								Text: Bind("To"),
+							},
+							Label{
+								Text: "合同号(ContractNo):",
+							},
+							LineEdit{
+								Text: Bind("ContractNo"),
+							},
+							Label{
+								Text: "地址(Address):",
+							},
+							LineEdit{
+								Text: Bind("Address"),
+							},
+							Label{
+								Text: "支付方式(PAYMENT TERMS):",
+							},
+							LineEdit{
+								Text: Bind("PaymentTerms"),
+							},
+							Label{
+								Text: "进出口交换比率(Terms of trade):",
+							},
+							LineEdit{
+								Text: Bind("TermsOfTrade"),
+							},
+							VSpacer{
+								ColumnSpan: 2,
+								Size:       8,
+							},
+						},
+					},
+					Composite{
+						Layout:   Grid{Columns: 5},
+						Children: widgetlit,
+					},
+				},
+			},
+			PushButton{
+				Text: "生成表格",
+				OnClicked: func() {
+					if err := db.Submit(); err != nil {
+						fmt.Println(err)
+						return
+					}
+					goods := make([]model.Good, 0)
+					var total float64
+					for i, hsno := range Hsnolist {
+						if hsno.Text() != "" {
+							if ItemNolist[i].Text() != "" && Deslist[i].Text() != "" && Quantitylist[i].Text() != "" && UnitPricelist[i].Text() != "" {
+								quantity, err := strconv.ParseFloat(Quantitylist[i].Text(), 32)
+								unitprice, err1 := strconv.ParseFloat(UnitPricelist[i].Text(), 32)
+								if err != nil || err1 != nil {
+									walk.MsgBox(mw, "失败", "请输入正确的单价和重量", walk.MsgBoxIconInformation)
+									return
+								}
+								good := model.Good{
+									HsNo:        hsno.Text(),
+									ItemNo:      ItemNolist[i].Text(),
+									Description: Deslist[i].Text(),
+									Quantity:    quantity,
+									UnitPrice:   unitprice,
+								}
+								good.Amount = good.Quantity * good.UnitPrice
+								total += good.Amount
+								goods = append(goods, good)
+							} else {
+								walk.MsgBox(mw, "失败", "请输入完整的商品内容！", walk.MsgBoxIconInformation)
+								return
+							}
+						}
+					}
+					invoice.Goods = goods
+					invoice.Total = total
+					mw.doExcel(*invoice)
+				},
+			},
+		},
+	}.Run()
+}
+
+func getValue(invoice model.Invoice, key string) string {
+	invoiceval := reflect.ValueOf(&invoice).Elem()
+	for i := 0; i < invoiceval.NumField()-1; i++ {
+		value := invoiceval.Field(i)
+		name := invoiceval.Type().Field(i).Name
+		if name == key {
+			if value.Kind() == reflect.String {
+				return value.String()
+			} else if value.Kind() == reflect.Float64 {
+				return strconv.FormatFloat(value.Float(), 'E', -1, 64)
+			} else {
+				date, ok := value.Interface().(time.Time)
+				if ok {
+					return strings.Split(date.Format("2006-01-02 15:04:05"), " ")[0]
+				}
+			}
+		}
+	}
+	return ""
+}
+
+func (mv *MyMainWindow) doExcel(invoice model.Invoice) {
+	excelFileName := "document/invoice.xlsx"
+	xlFile, err := xlsx.OpenFile(excelFileName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	for i, sheet := range xlFile.Sheets {
+		if i == 1 {
+			break
+		}
+		for j, row := range sheet.Rows {
+			if j == 9 {
+				break
+			}
+			for _, cell := range row.Cells {
+				text := cell.String()
+				if strings.ContainsAny(text, "?") {
+					strs := strings.Split(text, "?")
+					text = strings.Replace(text, "?"+strs[1]+"?", getValue(invoice, strs[1]), -1)
+					cell.SetString(text)
+				}
+			}
+		}
+	}
+	if len(invoice.Goods) > 3 {
+		for k := 0; k < len(invoice.Goods)-3; k++ {
+			row := &xlsx.Row{Sheet: xlFile.Sheets[0]}
+			cells := make([]*xlsx.Cell, 6)
+			for i := 0; i < 6; i++ {
+				cells[i] = xlsx.NewCell(row)
+				cells[i].SetStyle(xlFile.Sheets[0].Rows[10].Cells[0].GetStyle())
+			}
+			row.Cells = cells
+			rows := xlFile.Sheets[0].Rows[10:]
+			xlFile.Sheets[0].Rows = append(xlFile.Sheets[0].Rows[:10], row)
+			xlFile.Sheets[0].Rows = append(xlFile.Sheets[0].Rows, rows...)
+		}
+	}
+	for k, v := range invoice.Goods {
+		fmt.Println(xlFile.Sheets[0].Rows[11+k].Cells)
+		for i, cell := range xlFile.Sheets[0].Rows[11+k].Cells {
+			cell.GetStyle().Font = *xlsx.NewFont(10, "Times New Roman")
+			switch i {
+			case 0:
+				cell.SetString(v.HsNo)
+			case 1:
+				cell.SetString(v.ItemNo)
+			case 2:
+				cell.SetString(v.Description)
+			case 3:
+				cell.SetString(strconv.FormatFloat(v.Quantity, 'f', 2, 64))
+			case 4:
+				cell.SetString(strconv.FormatFloat(v.UnitPrice, 'f', 2, 64))
+			case 5:
+				cell.SetString(strconv.FormatFloat(v.Amount, 'f', 2, 64))
+			}
+		}
+	}
+	xlFile.Sheets[0].Rows[11+len(invoice.Goods)].Cells[1].SetString(strconv.FormatFloat(invoice.Total, 'f', -1, 64))
+	err = xlFile.Save("document/invoice1.xlsx")
+	if err != nil {
+		walk.MsgBox(mv, "保存失败", err.Error(), walk.MsgBoxIconInformation)
+	} else {
+		walk.MsgBox(mv, "保存成功", "Successful!", walk.MsgBoxIconInformation)
+	}
+}

@@ -1,0 +1,119 @@
+package main
+
+import (
+	"excelproject/model"
+	"fmt"
+
+	"github.com/lxn/walk"
+	. "github.com/lxn/walk/declarative"
+)
+
+func main() {
+	var db *walk.DataBinder
+	invoice := new(model.Invoice)
+	var widgetlit []Widget
+	widgetlit = append(widgetlit, Label{
+		Text: "商品海关编号(HsNo)",
+	},
+		Label{
+			Text: "项目号(ItemNo)",
+		},
+		Label{
+			Text: "商品描述(Description)",
+		},
+		Label{
+			Text: "商品重量(Quantity)",
+		},
+		Label{
+			Text: "单价(UnitPrice)",
+		})
+	editlist := make([]LineEdit, 90)
+	for _, edit := range editlist {
+		widgetlit = append(widgetlit, edit)
+	}
+
+	MainWindow{
+		Title:   "太仓巨仁光伏材料有限公司",
+		MinSize: Size{1100, 600},
+		Layout:  VBox{},
+		Children: []Widget{
+			HSplitter{
+				HandleWidth: 5,
+				DataBinder: DataBinder{
+					AssignTo:       &db,
+					DataSource:     invoice,
+					ErrorPresenter: ToolTipErrorPresenter{},
+				},
+				Children: []Widget{
+					Composite{
+						Layout: Grid{Columns: 1},
+						Children: []Widget{
+							Label{
+								Text: "发票号(INVOICE NO):",
+							},
+							LineEdit{
+								Text: Bind("InvoiceNo"),
+							},
+
+							Label{
+								Text: "日期(Date):",
+							},
+							DateEdit{
+								Date: Bind("Date"),
+							},
+
+							Label{
+								Text: "公司名(TO):",
+							},
+							LineEdit{
+								Text: Bind("To"),
+							},
+							Label{
+								Text: "合同号(ContractNo):",
+							},
+							LineEdit{
+								Text: Bind("ContractNo"),
+							},
+							Label{
+								Text: "地址(Address):",
+							},
+							LineEdit{
+								Text: Bind("Address"),
+							},
+							Label{
+								Text: "支付方式(PAYMENT TERMS):",
+							},
+							LineEdit{
+								Text: Bind("PaymentTerms"),
+							},
+							Label{
+								Text: "进出口交换比率(Terms of trade):",
+							},
+							LineEdit{
+								Text: Bind("TermsOfTrade"),
+							},
+							VSpacer{
+								ColumnSpan: 2,
+								Size:       8,
+							},
+						},
+					},
+					Composite{
+						Layout:   Grid{Columns: 5},
+						Children: widgetlit,
+					},
+				},
+			},
+			PushButton{
+				Text: "生成表格",
+				OnClicked: func() {
+					if err := db.Submit(); err != nil {
+						fmt.Println(err)
+						return
+					}
+					fmt.Println(invoice)
+				},
+			},
+		},
+	}.Run()
+}

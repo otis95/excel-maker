@@ -1,0 +1,42 @@
+package model
+
+import (
+	"time"
+)
+
+type Packing struct {
+	Id       string
+	Name     string
+	Standard string
+	Code     string
+	Weight   float64
+	Cartons  float64
+	Pallet   float64
+}
+type Invoice struct {
+	InvoiceNo    string    //发票号
+	Date         time.Time //日期
+	To           string    //对方公司
+	ContractNo   string    //合同号
+	Address      string    //地址
+	PaymentTerms string    //支付方式
+	TermsOfTrade string    //进出口交换比率
+	Pallet       string    //箱号
+	Gross        string    //毛重
+	Measurement  string    //量度
+	Total        float64   //商品价格总计
+	Customer     string
+	Order        string
+	Production   string
+	Goods        []Good //商品
+}
+type Good struct {
+	HsNo        string  //海关商品编码
+	ItemNo      string  //项目号
+	Description string  //商品描述
+	Quantity    float64 // 商品重量
+	NetWt       float64 //净重
+	GrossWt     float64 //毛重
+	UnitPrice   float64 //单价
+	Amount      float64 //总计
+}
