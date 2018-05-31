@@ -1,7 +1,7 @@
 package main
 
 import (
-	"excelproject/model"
+	"excel-maker/model"
 	"fmt"
 	"reflect"
 	"strconv"
