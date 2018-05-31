@@ -14,14 +14,14 @@ Golang is not friendly for Windows UI Maker.
 Why did I do this project？
 My friend want to have a software to make excel automatic.And he dont need to filled out repeatedly.
 
-
+UI:
 ![image](https://github.com/578157900/excel-maker/raw/master/image/view.png)
 
 
-
+Excel model:
 ![image](https://github.com/578157900/excel-maker/raw/master/image/excle_model.png)
 
-
+Excel result:
 ![image](https://github.com/578157900/excel-maker/raw/master/image/excle_result.png)
 
 
